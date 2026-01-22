@@ -1,0 +1,442 @@
+{% extends "base_app.html" %}
+{% block title %}Home – SmartChat{% endblock %}
+{% set active_tab = 'home' %}
+
+{% block main %}
+<section class="chat-list-panel">
+  <div class="search-bar">
+    <input id="chatSearchInput" type="text" placeholder="Search or start a new chat" autocomplete="off">
+    <button id="chatSearchClear" type="button" class="search-bar-close" title="Clear">✕</button>
+  </div>
+
+  <div class="chat-list-scroll">
+    {% for c in chat_items %}
+      <div class="chat-item-row {% if active_chat_id == c.id %}active{% endif %}">
+        <a class="chat-item-link" href="{{ url_for('open_chat', chat_id=c.id) }}">
+          <div class="chat-item-left">
+            <div class="avatar-circle">
+              {% if c.type == 'ai' %}🤖{% elif c.type == 'group' %}👥{% else %}👤{% endif %}
+            </div>
+            <div class="chat-name">{{ c.title }}</div>
+          </div>
+        </a>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="new-ai-row">
+    <form method="post" action="{{ url_for('new_ai_chat') }}">
+      <button class="new-ai-btn" type="submit">New AI chat</button>
+    </form>
+  </div>
+</section>
+
+<section class="main-area"
+         data-chat-id="{{ active_chat_id or '' }}"
+         data-chat-type="{{ active_chat.type if active_chat else '' }}"
+         data-my-username="{{ user.username }}"
+         data-ai-username="{{ AI_BOT_USERNAME if AI_BOT_USERNAME is defined else 'AI bot' }}">
+
+  {% if active_chat_id %}
+    <div class="chat-header">
+      <div class="chat-header-left">
+        <div class="avatar-circle small">
+          {% if active_chat and active_chat.type == 'ai' %}🤖
+          {% elif active_chat and active_chat.type == 'group' %}👥
+          {% else %}👤{% endif %}
+        </div>
+        <div class="chat-title">{{ chat_display_name }}</div>
+      </div>
+
+      {% if active_chat %}
+        <div class="chat-header-right" style="position:relative;">
+          <button type="button"
+                  id="chatMenuBtn"
+                  style="border:none;background:transparent;font-size:22px;cursor:pointer;">⋮</button>
+
+          <div class="chat-menu-card" id="chatMenuCard"
+               style="display:none; position:absolute; right:0; top:32px; z-index:2000;">
+            {% if active_chat.type == "group" %}
+              <button type="button"
+                      id="viewMembersBtn"
+                      style="width:100%; padding:10px 12px; border:none; background:white; text-align:left; cursor:pointer;">
+                View members
+              </button>
+
+              {% if is_admin %}
+              <button type="button"
+                      id="manageGroupBtn"
+                      style="width:100%; padding:10px 12px; border:none; background:white; text-align:left; cursor:pointer;">
+                Manage group
+              </button>
+              {% endif %}
+
+              <form method="post"
+                    action="{{ url_for('leave_group', chat_id=active_chat_id) }}"
+                    data-confirm="Are you sure you want to leave this group '{{ chat_display_name }}'?">
+                <button type="submit"
+                        style="width:100%; padding:10px 12px; border:none; background:white; text-align:left; cursor:pointer;">
+                  Leave group
+                </button>
+              </form>
+
+            {% elif active_chat.type == "dm" %}
+              {% if other_user_id %}
+                <form method="post"
+                      action="{{ url_for('unfriend_user', other_id=other_user_id, chat_id=active_chat_id) }}"
+                      data-confirm="Are you sure you want to unfriend '{{ chat_display_name }}'?">
+                  <button type="submit"
+                          style="width:100%; padding:10px 12px; border:none; background:white; text-align:left; cursor:pointer;">
+                    Unfriend
+                  </button>
+                </form>
+
+                <form method="post"
+                      action="{{ url_for('block_user', other_id=other_user_id, chat_id=active_chat_id) }}"
+                      data-confirm="Are you sure you want to block '{{ chat_display_name }}'?">
+                  <button type="submit"
+                          style="width:100%; padding:10px 12px; border:none; background:white; text-align:left; cursor:pointer;">
+                    Block
+                  </button>
+                </form>
+              {% else %}
+                <div style="padding:10px 12px; opacity:.7;">User not found</div>
+              {% endif %}
+
+              <form method="post"
+                    action="{{ url_for('delete_chat', chat_id=active_chat_id) }}"
+                    data-confirm="Are you sure you want to delete this chat '{{ chat_display_name }}'?">
+                <button type="submit"
+                        style="width:100%; padding:10px 12px; border:none; background:white; text-align:left; cursor:pointer;">
+                  Delete chat
+                </button>
+              </form>
+
+            {% elif active_chat.type == "ai" %}
+              <form method="post"
+                    action="{{ url_for('delete_chat', chat_id=active_chat_id) }}"
+                    data-confirm="Are you sure you want to delete this chat '{{ chat_display_name }}'?">
+                <button type="submit"
+                        style="width:100%; padding:10px 12px; border:none; background:white; text-align:left; cursor:pointer;">
+                  Delete chat
+                </button>
+              </form>
+            {% endif %}
+          </div>
+
+          {% if active_chat.type == "group" %}
+          <div id="groupMembersCard"
+               style="display:none; position:absolute; right:0; top:32px; z-index:2500; width:260px; background:white; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.18); overflow:hidden;">
+            <div style="padding:10px 12px; font-weight:600; border-bottom:1px solid rgba(0,0,0,.08);">
+              Members
+            </div>
+
+            <div style="max-height:260px; overflow:auto;">
+              {% for gm in group_members %}
+                <div style="padding:10px 12px; border-bottom:1px solid rgba(0,0,0,.06); display:flex; justify-content:space-between; align-items:center;">
+                  <span>{{ gm.username }}</span>
+                  {% if gm.role == "admin" %}
+                    <span style="font-size:12px; padding:2px 8px; border-radius:999px; background:rgba(0,116,199,0.12); border:1px solid rgba(0,116,199,0.25);">
+                      Admin
+                    </span>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+        </div>
+      {% else %}
+        <div class="chat-header-right">⋮</div>
+      {% endif %}
+    </div>
+
+    <div class="messages-area" id="messagesArea">
+      {% if messages %}
+        {% for m in messages %}
+          <div class="message-row {% if m.sender_id == user.id %}me{% else %}other{% endif %}">
+            <div class="message-wrapper">
+
+              {% if active_chat and active_chat.type == "group" %}
+                <div class="message-sender {% if m.sender_id == user.id %}me{% else %}other{% endif %}">
+                  {{ sender_map.get(m.sender_id, "User") }}
+                </div>
+              {% endif %}
+
+              <div class="message-bubble">{{ m.content }}</div>
+
+              <div class="message-meta">
+                <div class="message-date">{{ m.created_at.strftime('%d/%m/%y') }}</div>
+                <div class="message-time">{{ m.created_at.strftime('%I:%M %p') }}</div>
+              </div>
+
+            </div>
+          </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+
+    <div class="message-input-area">
+      <form method="post"
+            action="{{ url_for('send_message', chat_id=active_chat_id) }}"
+            class="message-form"
+            autocomplete="off">
+        <input type="text"
+               name="content"
+               placeholder="Type a message"
+               autocomplete="off"
+               autocorrect="off"
+               autocapitalize="off"
+               spellcheck="false"
+               inputmode="text"
+               required />
+      </form>
+    </div>
+
+    <script>
+      const box = document.getElementById("messagesArea");
+      if (box) box.scrollTop = box.scrollHeight;
+    </script>
+
+    <script>
+
+      (function(){
+        const btn = document.getElementById("chatMenuBtn");
+        const menu = document.getElementById("chatMenuCard");
+        const membersBtn = document.getElementById("viewMembersBtn");
+        const membersCard = document.getElementById("groupMembersCard");
+
+        if (!btn || !menu) return;
+
+        function closeDropdowns() {
+          menu.style.display = "none";
+          if (membersCard) membersCard.style.display = "none";
+        }
+
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const open = (menu.style.display === "block");
+          closeDropdowns();
+          menu.style.display = open ? "none" : "block";
+        });
+
+        menu.addEventListener("click", (e) => e.stopPropagation());
+        if (membersCard) membersCard.addEventListener("click", (e) => e.stopPropagation());
+
+        if (membersBtn && membersCard) {
+          membersBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            menu.style.display = "none";
+            membersCard.style.display = (membersCard.style.display === "block") ? "none" : "block";
+          });
+        }
+
+        document.addEventListener("click", closeDropdowns);
+      })();
+    </script>
+
+    <script>
+    (function(){
+      const mainArea = document.querySelector(".main-area");
+      const messagesArea = document.getElementById("messagesArea");
+      const form = document.querySelector(".message-form");
+      if (!mainArea || !messagesArea || !form) return;
+
+      const input = form.querySelector('input[name="content"]');
+      if (!input) return;
+
+      const chatType = mainArea.dataset.chatType || "";
+      const myUsername = mainArea.dataset.myUsername || "You";
+      const aiUsername = mainArea.dataset.aiUsername || "AI bot";
+
+      function escapeHtml(str){
+        return (str || "").replace(/[&<>"']/g, s => ({
+          "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+        }[s]));
+      }
+
+      function scrollToBottom(){
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+      }
+
+      function buildMessageRow({ who, content, time, date, senderName, typing=false }) {
+        const row = document.createElement("div");
+        row.className = "message-row " + (who === "me" ? "me" : "other");
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "message-wrapper";
+
+        if (chatType === "group" && senderName) {
+          const sender = document.createElement("div");
+          sender.className = "message-sender " + (who === "me" ? "me" : "other");
+          sender.textContent = senderName;
+          wrapper.appendChild(sender);
+        }
+
+        const bubble = document.createElement("div");
+        bubble.className = "message-bubble";
+
+        if (typing) {
+          bubble.classList.add("typing-bubble");
+          bubble.innerHTML = `<span class="dot"></span><span class="dot"></span><span class="dot"></span>`;
+        } else {
+          bubble.innerHTML = escapeHtml(content);
+        }
+
+        wrapper.appendChild(bubble);
+
+        const meta = document.createElement("div");
+        meta.className = "message-meta";
+        meta.innerHTML = `
+          <div class="message-date">${escapeHtml(date || "")}</div>
+          <div class="message-time">${escapeHtml(time || "")}</div>
+        `;
+        wrapper.appendChild(meta);
+
+        row.appendChild(wrapper);
+        return row;
+      }
+
+      function shouldExpectAI(text) {
+        const t = (text || "").toLowerCase();
+        if (chatType === "ai") return true;
+        if (chatType === "group") {
+          return t.includes("@ai") || t.includes("@" + aiUsername.toLowerCase());
+        }
+        return false;
+      }
+
+      let typingRow = null;
+
+      function showTyping(){
+        if (typingRow) return;
+        typingRow = buildMessageRow({
+          who: "other",
+          content: "",
+          time: "",
+          date: "",
+          senderName: (chatType === "group" ? aiUsername : ""),
+          typing: true
+        });
+        messagesArea.appendChild(typingRow);
+        scrollToBottom();
+      }
+
+      function hideTyping(){
+        if (typingRow) typingRow.remove();
+        typingRow = null;
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const text = (input.value || "").trim();
+        if (!text) return;
+
+        input.value = "";
+        input.focus();
+
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2,"0");
+        const mm = String(now.getMonth()+1).padStart(2,"0");
+        const yy = String(now.getFullYear()).slice(-2);
+        const approxDate = `${dd}/${mm}/${yy}`;
+        const approxTime = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+        const myRow = buildMessageRow({
+          who: "me",
+          content: text,
+          time: approxTime,
+          date: approxDate,
+          senderName: (chatType === "group" ? myUsername : "")
+        });
+        messagesArea.appendChild(myRow);
+        scrollToBottom();
+
+        const expectAI = shouldExpectAI(text);
+        if (expectAI) showTyping();
+
+        try {
+          const fd = new FormData();
+          fd.append("content", text);
+
+          const resp = await fetch(form.action, {
+            method: "POST",
+            body: fd,
+            headers: { "X-Requested-With": "XMLHttpRequest" }
+          });
+
+          const data = await resp.json();
+          if (!data.ok) {
+            hideTyping();
+            alert(data.error || "Failed to send.");
+            return;
+          }
+          hideTyping();
+          if (data.ai_message && data.ai_message.content) {
+            const aiRow = buildMessageRow({
+              who: "other",
+              content: data.ai_message.content,
+              time: data.ai_message.time,
+              date: data.ai_message.date,
+              senderName: (chatType === "group" ? (data.ai_message.sender_name || aiUsername) : "")
+            });
+            messagesArea.appendChild(aiRow);
+            scrollToBottom();
+          }
+
+        } catch (err) {
+          hideTyping();
+          console.error(err);
+          alert("Network error.");
+        }
+      });
+
+    })();
+    </script>
+
+  {% else %}
+    <div style="flex:1;"></div>
+  {% endif %}
+</section>
+
+<script>
+(function () {
+  const input = document.getElementById("chatSearchInput");
+  const clearBtn = document.getElementById("chatSearchClear");
+  if (!input) return;
+
+  const rows = Array.from(document.querySelectorAll(".chat-item-row"));
+
+  function normalize(s) {
+    return (s || "").toLowerCase().trim();
+  }
+
+  function filterChats() {
+    const q = normalize(input.value);
+
+    rows.forEach(row => {
+      const nameEl = row.querySelector(".chat-name");
+      const title = normalize(nameEl ? nameEl.textContent : "");
+      row.style.display = (!q || title.includes(q)) ? "" : "none";
+    });
+
+    if (clearBtn) clearBtn.style.opacity = input.value ? "0.9" : "0.35";
+  }
+
+  input.addEventListener("input", filterChats);
+
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
+      input.value = "";
+      filterChats();
+      input.focus();
+    });
+  }
+
+  filterChats();
+})();
+</script>
+
+{% endblock %}

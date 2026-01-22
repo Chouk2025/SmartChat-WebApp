@@ -1,0 +1,22 @@
+{% extends "base_auth.html" %}
+{% block title %}Sign In – SmartChat{% endblock %}
+
+{% block content %}
+<form method="post" action="{{ url_for('login') }}">
+  <input class="input-field" type="text" name="username" placeholder="Username" required>
+  <input class="input-field" type="password" name="password" placeholder="Password" required>
+
+  <div style="text-align:left; margin-bottom:10px;">
+    <a href="{{ url_for('forgot_password') }}" style="color:#0061c2; text-decoration:none;">
+      Forgot Password?
+    </a>
+  </div>
+
+  <button type="submit" class="primary-btn">Sign in</button>
+
+  <div class="link-row" style="margin-top:30px;">
+    Don’t have an account?
+    <a href="{{ url_for('register') }}">Sign Up</a>
+  </div>
+</form>
+{% endblock %}

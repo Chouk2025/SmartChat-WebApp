@@ -1,0 +1,117 @@
+{% extends "base_app.html" %}
+{% block title %}Search – SmartChat{% endblock %}
+{% set active_tab = 'search' %}
+
+{% block main %}
+<section class="chat-list-panel">
+  <form class="search-bar" method="get" action="{{ url_for('search_tab') }}">
+  <input type="text" name="q" placeholder="Search for a user" value="{{ q }}">
+
+ 
+
+  {% if q %}
+    <a class="search-bar-close" href="{{ url_for('search_tab') }}">✕</a>
+  {% else %}
+    <span class="search-bar-close" style="opacity:.35;">✕</span>
+  {% endif %}
+</form>
+
+  <div class="chat-list-scroll">
+    {% for item in results %}
+      {% set u = item.u %}
+      {% set state = item.state %}
+
+      <div class="user-row">
+        <div class="user-left">
+          <div class="avatar-circle">👤</div>
+          <div class="user-name">{{ u.username }}</div>
+        </div>
+
+        <form method="post"
+              class="friend-form"
+              data-other-id="{{ u.id }}"
+              action="{{ url_for('toggle_friend_request', other_id=u.id, q=q) }}">
+          {% if state == "pending_sent" %}
+            <button class="friend-btn cancel" type="submit" title="Cancel request" data-state="pending_sent">✖</button>
+          {% elif state == "friends" %}
+            <button class="friend-btn disabled" type="button" disabled title="Friends" data-state="friends">✓</button>
+          {% elif state == "pending_received" %}
+            <button class="friend-btn disabled" type="button" disabled title="Requested you" data-state="pending_received">…</button>
+          {% else %}
+            <button class="friend-btn" type="submit" title="Send request" data-state="none">➕</button>
+          {% endif %}
+        </form>
+      </div>
+    {% endfor %}
+
+    {% if q and results|length == 0 %}
+      <div style="color:white; opacity:.9; padding:10px;">No users found.</div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="main-area">
+  <div style="flex:1;"></div>
+</section>
+
+<script>
+  function applyState(btn, state) {
+    btn.classList.remove("cancel", "disabled", "is-loading");
+    btn.disabled = false;
+
+    if (state === "pending_sent") {
+      btn.classList.add("cancel");
+      btn.textContent = "✖";
+      btn.title = "Cancel request";
+    } else if (state === "friends") {
+      btn.classList.add("disabled");
+      btn.disabled = true;
+      btn.textContent = "✓";
+      btn.title = "Friends";
+    } else if (state === "pending_received") {
+      btn.classList.add("disabled");
+      btn.disabled = true;
+      btn.textContent = "…";
+      btn.title = "Requested you";
+    } else { 
+      btn.textContent = "➕";
+      btn.title = "Send request";
+    }
+
+    btn.setAttribute("data-state", state);
+  }
+
+  document.addEventListener("submit", async function(e){
+    const form = e.target;
+    if (!form.classList.contains("friend-form")) return;
+
+    e.preventDefault(); 
+
+    const btn = form.querySelector(".friend-btn");
+    if (!btn || btn.disabled) return;
+
+    btn.classList.add("is-loading");
+
+    try {
+      const res = await fetch(form.action, {
+        method: "POST",
+        headers: {
+          "X-Requested-With": "XMLHttpRequest"
+        }
+      });
+
+      const data = await res.json();
+      if (!data.ok) {
+        btn.classList.remove("is-loading");
+        return;
+      }
+
+      applyState(btn, data.state);
+    } catch (err) {
+      btn.classList.remove("is-loading");
+      console.error(err);
+    }
+  }, true);
+</script>
+
+{% endblock %}

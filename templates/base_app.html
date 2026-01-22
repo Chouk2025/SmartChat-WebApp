@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}SmartChat{% endblock %}</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+  <div class="app-shell">
+
+    
+    <aside class="sidebar">
+      <a class="sidebar-icon {% if active_tab=='home' %}active{% endif %}" href="{{ url_for('home') }}" title="Home">🏠</a>
+      <a class="sidebar-icon {% if active_tab=='search' %}active{% endif %}" href="{{ url_for('search_tab') }}" title="Search">🔍</a>
+      <a class="sidebar-icon {% if active_tab=='friends' %}active{% endif %}" href="{{ url_for('friends') }}" title="Friends">🙂</a>
+      <a class="sidebar-icon {% if active_tab=='notifications' %}active{% endif %}" href="{{ url_for('notifications') }}" title="Notifications">🔔</a>
+
+      <div class="sidebar-spacer"></div>
+
+      <a class="sidebar-icon {% if active_tab=='settings' %}active{% endif %}" href="{{ url_for('settings') }}" title="Settings">⚙️</a>
+      <div class="sidebar-avatar-wrap">
+  <button class="sidebar-avatar" id="accountBtn" type="button" title="Account">
+    {{ (session.get('username') or 'U')[:1]|upper }}
+  </button>
+
+  <div class="account-card" id="accountCard">
+    <div class="account-text">
+      Signed in as<br>
+      <strong>{{ session.get('username') }}</strong>
+    </div>
+
+    <form method="get" action="{{ url_for('logout') }}">
+      <button class="account-signout" type="submit">Sign out</button>
+    </form>
+  </div>
+</div>
+
+    </aside>
+    
+    
+    {% block main %}{% endblock %}
+
+  </div>
+  <script>
+  (function(){
+    const btn = document.getElementById("accountBtn");
+    const card = document.getElementById("accountCard");
+    if (!btn || !card) return;
+
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      card.classList.toggle("show");
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!card.contains(e.target) && e.target !== btn) {
+        card.classList.remove("show");
+      }
+    });
+  })();
+</script>
+
+<div id="confirmOverlay" class="confirm-overlay" style="display:none;">
+  <div class="confirm-card" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div id="confirmTitle" class="confirm-title">Are you sure?</div>
+    <div id="confirmText" class="confirm-text"></div>
+
+    <div class="confirm-actions">
+      <button type="button" id="confirmNoBtn" class="confirm-btn no">No</button>
+      <button type="button" id="confirmYesBtn" class="confirm-btn yes">Yes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const overlay = document.getElementById("confirmOverlay");
+  const textEl  = document.getElementById("confirmText");
+  const yesBtn  = document.getElementById("confirmYesBtn");
+  const noBtn   = document.getElementById("confirmNoBtn");
+
+  let pendingForm = null;
+
+  function openConfirm(message, formEl) {
+    pendingForm = formEl;
+    textEl.textContent = message;
+    overlay.style.display = "flex";
+  }
+
+  function closeConfirm() {
+    pendingForm = null;
+    overlay.style.display = "none";
+  }
+
+ 
+  document.addEventListener("submit", function (e) {
+    const form = e.target;
+    if (!(form instanceof HTMLFormElement)) return;
+
+    const msg = form.getAttribute("data-confirm");
+    if (!msg) return; 
+
+    e.preventDefault();
+    openConfirm(msg, form);
+  }, true);
+
+  yesBtn.addEventListener("click", function () {
+    if (pendingForm) pendingForm.submit();
+    closeConfirm();
+  });
+
+  noBtn.addEventListener("click", closeConfirm);
+
+  overlay.addEventListener("click", function (e) {
+    if (e.target === overlay) closeConfirm();
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && overlay.style.display !== "none") closeConfirm();
+  });
+})();
+</script>
+</body>
+</html>

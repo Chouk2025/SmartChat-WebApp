@@ -1,0 +1,148 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'friends' %}
+{% block title %}Friends – SmartChat{% endblock %}
+
+{% block main %}
+<section class="chat-list-panel" id="friendsPanel">
+
+  <form class="search-bar" method="get" action="{{ url_for('friends') }}">
+    <input type="text" name="q" placeholder="Search for a friend or group" value="{{ q }}">
+    {% if q %}
+      <a class="search-bar-close" href="{{ url_for('friends') }}">✕</a>
+    {% else %}
+      <span class="search-bar-close" style="opacity:.35;">✕</span>
+    {% endif %}
+  </form>
+
+  <div class="chat-list-scroll" id="friendsList">
+    {% for f in friends %}
+      <a class="friend-item"
+         href="{{ url_for('open_dm_with_friend', friend_id=f.id) }}"
+         data-friend-id="{{ f.id }}"
+         style="text-decoration:none; color:inherit;">
+        <div class="chat-item-left">
+          <div class="avatar-circle friend-avatar">{{ f.username[0]|upper }}</div>
+          <div class="chat-name">{{ f.username }}</div>
+        </div>
+      </a>
+    {% endfor %}
+
+    {% if friends|length == 0 %}
+      <div style="color:white; opacity:.9; padding:10px;">No friends found.</div>
+    {% endif %}
+  </div>
+  <button class="create-group-btn" type="button" id="openGroupBtn">Create group</button>
+  <div class="group-card-wrap" id="groupCardWrap" style="display:none;">
+    <form method="post" action="{{ url_for('create_group') }}" id="groupCreateForm">
+      <div class="group-card">
+
+        <input class="group-input"
+               type="text"
+               name="group_title"
+               placeholder="Enter group name"
+               required>
+
+        <select class="group-input" name="group_timezone">
+          <option value="">Group timezone (optional)</option>
+          {% for tz in common_timezones %}
+            <option value="{{ tz }}" {% if user.timezone == tz %}selected{% endif %}>{{ tz }}</option>
+          {% endfor %}
+        </select>
+
+        <label class="group-ai-row">
+          <input type="checkbox" id="aiEnabledChk">
+          <span>Would you like to add an AI bot?</span>
+        </label>
+
+        <div id="selectedIdsHolder"></div>
+
+        <input type="hidden" name="ai_enabled" id="aiEnabledVal" value="0">
+      </div>
+
+      <div class="group-actions">
+        <button type="button" class="group-btn cancel" id="cancelGroupBtn">Cancel</button>
+        <button type="submit" class="group-btn confirm">Create</button>
+      </div>
+    </form>
+  </div>
+
+</section>
+
+<section class="main-area">
+  <div style="flex:1;"></div>
+</section>
+
+<script>
+(function(){
+  const panel = document.getElementById("friendsPanel");
+  const list = document.getElementById("friendsList");
+  const openBtn = document.getElementById("openGroupBtn");
+  const wrap = document.getElementById("groupCardWrap");
+  const cancelBtn = document.getElementById("cancelGroupBtn");
+  const holder = document.getElementById("selectedIdsHolder");
+  const form = document.getElementById("groupCreateForm");
+  const aiChk = document.getElementById("aiEnabledChk");
+  const aiVal = document.getElementById("aiEnabledVal");
+
+  let groupMode = false;
+  const selected = new Set();
+
+  function setGroupMode(on){
+    groupMode = on;
+    wrap.style.display = on ? "block" : "none";
+    panel.classList.toggle("group-mode", on);
+    openBtn.style.display = on ? "none" : "inline-block";
+
+    if (!on) {
+      selected.clear();
+      holder.innerHTML = "";
+      document.querySelectorAll(".friend-item.selected").forEach(x => x.classList.remove("selected"));
+      aiChk.checked = false;
+      aiVal.value = "0";
+    }
+  }
+
+  openBtn.addEventListener("click", () => setGroupMode(true));
+  cancelBtn.addEventListener("click", () => setGroupMode(false));
+
+  list.addEventListener("click", (e) => {
+    const item = e.target.closest(".friend-item");
+    if (!item) return;
+
+    if (!groupMode) return;
+    e.preventDefault();
+
+    const id = item.getAttribute("data-friend-id");
+    if (!id) return;
+
+    if (selected.has(id)) {
+      selected.delete(id);
+      item.classList.remove("selected");
+    } else {
+      selected.add(id);
+      item.classList.add("selected");
+    }
+
+    holder.innerHTML = "";
+    selected.forEach(fid => {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = "friend_ids";
+      input.value = fid;
+      holder.appendChild(input);
+    });
+  });
+
+  aiChk.addEventListener("change", () => {
+    aiVal.value = aiChk.checked ? "1" : "0";
+  });
+
+  form.addEventListener("submit", (e) => {
+    if (selected.size === 0) {
+      e.preventDefault();
+      alert("Select at least 1 friend.");
+    }
+  });
+})();
+</script>
+{% endblock %}

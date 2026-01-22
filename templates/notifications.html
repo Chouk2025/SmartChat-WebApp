@@ -1,0 +1,41 @@
+{% extends "base_app.html" %}
+{% block title %}Notifications – SmartChat{% endblock %}
+{% set active_tab = 'notifications' %}
+
+{% block main %}
+<section class="chat-list-panel">
+
+  <div style="color:white; font-weight:700; padding: 6px 6px 12px;">
+    Friend Requests
+  </div>
+
+  <div class="chat-list-scroll">
+    {% if incoming and incoming|length > 0 %}
+      {% for fr, u in incoming %}
+        <div class="user-row">
+          <div class="user-left">
+            <div class="avatar-circle">👤</div>
+            <div class="user-name">{{ u.username }}</div>
+          </div>
+
+          <div style="display:flex; gap:10px;">
+            <form method="post" action="{{ url_for('accept_friend_request', req_id=fr.id) }}">
+              <button class="friend-btn" type="submit" title="Accept">✓</button>
+            </form>
+
+            <form method="post" action="{{ url_for('decline_friend_request', req_id=fr.id) }}">
+              <button class="friend-btn cancel" type="submit" title="Decline">✖</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div style="color:white; opacity:.9; padding:10px;">You have no requests.</div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="main-area">
+  <div style="flex:1;"></div>
+</section>
+{% endblock %}

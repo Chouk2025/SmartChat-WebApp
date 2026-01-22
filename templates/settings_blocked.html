@@ -1,0 +1,35 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'settings' %}
+{% block title %}Blocked Users – SmartChat{% endblock %}
+
+{% block main %}
+<section class="chat-list-panel">
+
+  <div class="panel-title">Blocked users</div>
+
+  <div class="chat-list-scroll">
+    {% if blocked|length == 0 %}
+      <div class="panel-empty">No blocked users.</div>
+    {% endif %}
+
+    {% for u, b in blocked %}
+      <div class="blocked-row">
+        <div class="blocked-left">
+          <div class="avatar-letter">
+            {{ u.username[0]|upper }}
+          </div>
+          <div class="blocked-name">{{ u.username }}</div>
+        </div>
+
+        <form method="post" action="{{ url_for('unblock_user', other_id=u.id) }}">
+          <button class="unblock-btn" type="submit">Unblock</button>
+        </form>
+      </div>
+    {% endfor %}
+  </div>
+
+</section>
+<section class="main-area">
+  <div style="flex:1;"></div>
+</section>
+{% endblock %}

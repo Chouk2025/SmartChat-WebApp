@@ -1,0 +1,37 @@
+{% extends "base_app.html" %}
+{% set active_tab = 'settings' %}
+{% block title %}Settings – SmartChat{% endblock %}
+
+{% block main %}
+<section class="chat-list-panel">
+  <div class="settings-page">
+    <h2 class="settings-title">Settings</h2>
+
+    <a class="settings-card" href="{{ url_for('settings_blocked') }}">
+      <div class="settings-card-title">Blocked users</div>
+      <div class="settings-card-sub">View and unblock users</div>
+    </a>
+
+    <form method="post" action="{{ url_for('update_timezone') }}" style="margin-top:14px;">
+  <div style="display:flex; flex-direction:column; gap:10px; max-width:360px;">
+
+    <select name="timezone"
+            required
+            style="padding:10px 12px; border-radius:10px; border:1px solid rgba(0,0,0,.15);">
+      <option value="" disabled {% if not user.timezone %}selected{% endif %}>Select timezone</option>
+      {% for tz in common_timezones %}
+        <option value="{{ tz }}" {% if user.timezone == tz %}selected{% endif %}>{{ tz }}</option>
+      {% endfor %}
+    </select>
+
+    <button class="primary-btn" type="submit" style="width:fit-content;">Save</button>
+  </div>
+</form>
+
+  </div>
+</section>
+
+<section class="main-area">
+  <div style="flex:1;"></div>
+</section>
+{% endblock %}
